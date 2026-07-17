@@ -19,6 +19,7 @@ package models
 
 import (
 	"encoding/json"
+	"strings"
 )
 
 type DeviceOwner struct {
@@ -26,16 +27,24 @@ type DeviceOwner struct {
 	DeviceId string          `json:"deviceId"`
 }
 
-func (s *DeviceOwner) MarshalJSON() ([]byte, error) {
-	output := make(map[string]any)
-	output["deviceId"] = s.DeviceId
+// MarshalJSON uppercases DeviceId and the embedded owner.id for raw
+// (use_raw_object_id) ingest. An empty or nil owner is emitted as null to
+// avoid unmarshaling it. Non-mutating.
+func (s DeviceOwner) MarshalJSON() ([]byte, error) {
+	type Alias DeviceOwner
+	a := Alias(s)
+	a.DeviceId = strings.ToUpper(a.DeviceId)
 
-	if owner, err := OmitEmpty(s.Owner); err != nil {
-		return nil, err
+	if len(a.Owner) > 0 {
+		owner, err := OmitEmptyUpper(a.Owner, "id")
+		if err != nil {
+			return nil, err
+		}
+		a.Owner = owner
 	} else {
-		output["owner"] = owner
-		return json.Marshal(output)
+		a.Owner = nil
 	}
+	return json.Marshal(a)
 }
 
 type DeviceOwners struct {

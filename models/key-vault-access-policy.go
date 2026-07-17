@@ -17,9 +17,24 @@
 
 package models
 
-import "github.com/bloodhoundad/azurehound/v2/models/azure"
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/bloodhoundad/azurehound/v2/models/azure"
+)
 
 type KeyVaultAccessPolicy struct {
 	azure.AccessPolicyEntry
 	KeyVaultId string `json:"keyVaultId"`
+}
+
+func (s KeyVaultAccessPolicy) MarshalJSON() ([]byte, error) {
+	type Alias KeyVaultAccessPolicy
+	a := Alias(s)
+	a.ObjectId = strings.ToUpper(a.ObjectId)
+	a.ApplicationId = strings.ToUpper(a.ApplicationId)
+	a.TenantId = strings.ToUpper(a.TenantId)
+	a.KeyVaultId = strings.ToUpper(a.KeyVaultId)
+	return json.Marshal(a)
 }

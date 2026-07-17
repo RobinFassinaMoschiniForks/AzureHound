@@ -19,6 +19,7 @@ package models
 
 import (
 	"encoding/json"
+	"strings"
 )
 
 type GroupMember struct {
@@ -26,19 +27,34 @@ type GroupMember struct {
 	GroupId string          `json:"groupId"`
 }
 
-func (s *GroupMember) MarshalJSON() ([]byte, error) {
-	output := make(map[string]any)
-	output["groupId"] = s.GroupId
+// MarshalJSON uppercases GroupId and the embedded member.id for raw
+// (use_raw_object_id) ingest. An empty or nil member is emitted as null to
+// avoid unmarshaling it. Non-mutating.
+func (s GroupMember) MarshalJSON() ([]byte, error) {
+	type Alias GroupMember
+	a := Alias(s)
+	a.GroupId = strings.ToUpper(a.GroupId)
 
-	if member, err := OmitEmpty(s.Member); err != nil {
-		return nil, err
+	if len(a.Member) > 0 {
+		member, err := OmitEmptyUpper(a.Member, "id")
+		if err != nil {
+			return nil, err
+		}
+		a.Member = member
 	} else {
-		output["member"] = member
-		return json.Marshal(output)
+		a.Member = nil
 	}
+	return json.Marshal(a)
 }
 
 type GroupMembers struct {
 	Members []GroupMember `json:"members"`
 	GroupId string        `json:"groupId"`
+}
+
+func (s GroupMembers) MarshalJSON() ([]byte, error) {
+	type Alias GroupMembers
+	a := Alias(s)
+	a.GroupId = strings.ToUpper(a.GroupId)
+	return json.Marshal(a)
 }

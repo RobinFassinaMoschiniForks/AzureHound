@@ -19,6 +19,7 @@ package models
 
 import (
 	"encoding/json"
+	"strings"
 )
 
 type ServicePrincipalOwner struct {
@@ -26,11 +27,11 @@ type ServicePrincipalOwner struct {
 	ServicePrincipalId string          `json:"servicePrincipalId"`
 }
 
-func (s *ServicePrincipalOwner) MarshalJSON() ([]byte, error) {
+func (s ServicePrincipalOwner) MarshalJSON() ([]byte, error) {
 	output := make(map[string]any)
-	output["servicePrincipalId"] = s.ServicePrincipalId
+	output["servicePrincipalId"] = strings.ToUpper(s.ServicePrincipalId)
 
-	if owner, err := OmitEmpty(s.Owner); err != nil {
+	if owner, err := OmitEmptyUpper(s.Owner, "id"); err != nil {
 		return nil, err
 	} else {
 		output["owner"] = owner
@@ -41,4 +42,11 @@ func (s *ServicePrincipalOwner) MarshalJSON() ([]byte, error) {
 type ServicePrincipalOwners struct {
 	Owners             []ServicePrincipalOwner `json:"owners"`
 	ServicePrincipalId string                  `json:"servicePrincipalId"`
+}
+
+func (s ServicePrincipalOwners) MarshalJSON() ([]byte, error) {
+	type Alias ServicePrincipalOwners
+	a := Alias(s)
+	a.ServicePrincipalId = strings.ToUpper(a.ServicePrincipalId)
+	return json.Marshal(a)
 }

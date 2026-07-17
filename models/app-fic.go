@@ -19,6 +19,7 @@ package models
 
 import (
 	"encoding/json"
+	"strings"
 )
 
 type AppFIC struct {
@@ -26,20 +27,24 @@ type AppFIC struct {
 	AppId string          `json:"appId"`
 }
 
+// MarshalJSON uppercases AppId and the embedded fic.id for raw
+// (use_raw_object_id) ingest; display-only fic fields are untouched. An empty
+// or nil fic is emitted as null to avoid unmarshaling it. Non-mutating.
 func (s *AppFIC) MarshalJSON() ([]byte, error) {
-	output := make(map[string]any)
-	output["appId"] = s.AppId
+	type Alias AppFIC
+	a := Alias(*s)
+	a.AppId = strings.ToUpper(a.AppId)
 
-	if s.FIC == nil {
-		return nil, nil
-	}
-
-	if fic, err := OmitEmpty(s.FIC); err != nil {
-		return nil, err
+	if len(a.FIC) > 0 {
+		fic, err := OmitEmptyUpper(a.FIC, "id")
+		if err != nil {
+			return nil, err
+		}
+		a.FIC = fic
 	} else {
-		output["fic"] = fic
-		return json.Marshal(output)
+		a.FIC = nil
 	}
+	return json.Marshal(a)
 }
 
 type AppFICs struct {
